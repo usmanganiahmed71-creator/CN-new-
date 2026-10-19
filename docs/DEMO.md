@@ -259,3 +259,5 @@ Cleanup removes leftover virtual links and switches. It also kills any running `
 | Server health (server crash, link fine) | Section 7 |
 | Demonstration with Wireshark | Section 3 and section 5 |
 | Before and after recovery graph | Section 6 |
+## Application health telemetry
+The controller probes the server's `/health` endpoint every two seconds. A healthy response is logged with latency. If the network paths remain healthy but the Flask process is stopped, the controller logs `SERVER_UNRESPONSIVE`. If the paths fail, it logs `NETWORK_PATH_UNAVAILABLE` or `NETWORK_AND_SERVER_UNAVAILABLE`. The topology contains one server, so this detects and classifies the failure but does not replace the server.

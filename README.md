@@ -142,3 +142,7 @@ Standard library only, works on any Python 3.9+.
 Implemented: virtual network, controller, Fast Failover with controller-assisted path agreement, per-client deny/allow, Wireshark inspection, failover measurement.
 
 Not implemented (described in the design notes as extensions): TLS mutual authentication on the OpenFlow channel, an active server health-check, controller redundancy. OpenFlow cannot see an application crash behind a live link; Section 11 of `docs/DEMO.md` demonstrates exactly that gap.
+
+
+## Server health telemetry
+The Ryu controller probes the Flask `/health` endpoint every two seconds and records response latency when the server is healthy. It distinguishes `HEALTHY`, `SERVER_UNRESPONSIVE`, `NETWORK_PATH_UNAVAILABLE`, and `NETWORK_AND_SERVER_UNAVAILABLE`. A path change cannot repair the only server, so server replacement remains outside this single-server topology.

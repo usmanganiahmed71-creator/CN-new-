@@ -18,6 +18,7 @@ from ryu.ofproto import ofproto_v1_3
 from nettwin import netmodel, policy
 from nettwin.controller.failover import LinkHealth, PolicyReRouteManager
 from nettwin.controller.programmer import SwitchProgrammer
+from nettwin.controller.server_health import ServerHealthProbe, classify_fault
 
 
 class NetTwin(app_manager.RyuApp):
@@ -32,9 +33,29 @@ class NetTwin(app_manager.RyuApp):
         self._active_decisions = {}     # src_ip -> PolicyDecision
         self._installed_bypasses = set()  # set of src_ip currently having bypass rules
         self._last_block_signature = None
+        self._server_probe = ServerHealthProbe(
+            "http://%s:%d/health" % (netmodel.HOSTS[netmodel.SERVER], netmodel.SERVER_PORT))
+        self._last_fault = None
 
-        # Start policy monitor thread
+        # Start the policy and application health monitor threads.
         self._policy_thread = hub.spawn(self._policy_monitor_loop)
+        self._server_monitor = hub.spawn(self._monitor_server)
+
+    def _monitor_server(self):
+        """Log application health independently from OpenFlow link health."""
+        while True:
+            result = self._server_probe.check()
+            network_healthy = any(
+                self._health.is_path_healthy(path) for path in netmodel.PATHS)
+            fault = classify_fault(result.healthy, network_healthy)
+            if fault != self._last_fault:
+                if result.latency_ms is None:
+                    self.logger.warning("server health: %s", fault)
+                else:
+                    self.logger.info("server health: %s (%.1f ms)",
+                                     fault, result.latency_ms)
+                self._last_fault = fault
+            hub.sleep(2)
 
     # ------------------------------------------------ a switch connects
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
