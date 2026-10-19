@@ -1,5 +1,8 @@
 import unittest
+from tempfile import NamedTemporaryFile
 from unittest.mock import patch
+import os
+import time
 
 from nettwin.controller.server_health import (
     HealthResult,
@@ -38,6 +41,15 @@ class ServerHealthProbeTest(unittest.TestCase):
             ServerHealthProbe("http://example.test/health").check(),
             HealthResult(False, None),
         )
+
+    @patch("nettwin.controller.server_health.urlopen", side_effect=OSError)
+    def test_fresh_heartbeat_recovers_namespace_isolated_probe(self, urlopen):
+        with NamedTemporaryFile() as heartbeat:
+            os.utime(heartbeat.name, (time.time(), time.time()))
+            result = ServerHealthProbe(
+                "http://example.test/health", heartbeat_path=heartbeat.name
+            ).check()
+        self.assertEqual(result, HealthResult(True, None))
 
 
 if __name__ == "__main__":
